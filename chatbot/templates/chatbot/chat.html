@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chat</title>
+    <style>
+      /* Estilos globais */
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #f0f0f0;
+        color: #333;
+        margin: 0;
+        padding: 0;
+      }
+
+      /* Container principal do chat */
+      #chatContainer {
+        max-width: 600px;
+        margin: 20px auto;
+        padding: 20px;
+        background-color: #fff;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      }
+
+      /* Cabeçalho do chat */
+      h1 {
+        font-size: 24px;
+        margin-bottom: 20px;
+        color: #007bff;
+      }
+
+      /* Área de exibição das mensagens */
+      #messageDisplay {
+        margin-bottom: 20px;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        background-color: #f9f9f9;
+        min-height: 150px;
+        max-height: 300px;
+        overflow-y: auto;
+      }
+
+      /* Estilos para mensagens */
+      .message {
+        margin: 5px 0;
+        padding: 10px;
+        border-radius: 5px;
+        max-width: 80%;
+        word-wrap: break-word;
+      }
+
+      .user-message {
+        background-color: #e1f5fe;
+        text-align: right;
+        margin-left: auto;
+      }
+
+      .bot-message {
+        background-color: #f1f8e9;
+      }
+
+      /* Estilos para o formulário de chat */
+      .form-label {
+        display: block;
+        font-size: 16px;
+        font-weight: bold;
+        margin-bottom: 8px;
+        color: #333;
+      }
+
+      .form-input {
+        width: calc(100% - 22px); /* Ajusta a largura para incluir padding e borda */
+        padding: 10px;
+        font-size: 16px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        box-sizing: border-box;
+        margin-bottom: 12px;
+        transition: border-color 0.3s;
+      }
+
+      .form-input:focus {
+        border-color: #007bff;
+        outline: none;
+      }
+
+      .submit-button {
+        display: inline-block;
+        padding: 10px 20px;
+        font-size: 16px;
+        font-weight: bold;
+        text-align: center;
+        color: #fff;
+        background-color: #28a745;
+        border: none;
+        border-radius: 5px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        cursor: pointer;
+        transition: background-color 0.3s, box-shadow 0.3s;
+      }
+
+      .submit-button:hover {
+        background-color: #218838;
+        box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+      }
+
+      .submit-button:active {
+        background-color: #1e7e34;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        transform: translateY(2px);
+      }
+
+      .redirect-button {
+        display: none; /* Inicialmente escondido */
+        margin-top: 10px;
+        padding: 10px 20px;
+        font-size: 16px;
+        font-weight: bold;
+        text-align: center;
+        text-decoration: none;
+        color: #fff;
+        background-color: #007bff;
+        border-radius: 5px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        transition: background-color 0.3s, box-shadow 0.3s;
+      }
+
+      .redirect-button:hover {
+        background-color: #0056b3;
+        box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+      }
+
+      .redirect-button:active {
+        background-color: #004085;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        transform: translateY(2px);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="chatContainer">
+      <h1>Chat</h1>
+      <div id="messageDisplay">
+        <!-- Mensagens serão exibidas aqui -->
+      </div>
+      <form id="chatForm" method="POST" action="{% url 'chat' %}">
+        {% csrf_token %}
+        <label for="message" class="form-label">Mensagem:</label>
+        <input
+          type="text"
+          id="message"
+          name="message"
+          class="form-input"
+          required
+        />
+        <button type="submit" class="submit-button" id="submitButton">Enviar</button>
+      </form>
+      <a
+        href="{% url 'gemini' session_id=session_id %}"
+        class="redirect-button"
+        id="redirectButton"
+      >
+        Ir para o Chat
+      </a>
+    </div>
+
+    <script>
+      document
+        .getElementById("chatForm")
+        .addEventListener("submit", function (event) {
+          event.preventDefault(); // Previne o envio padrão do formulário
+
+          var formData = new FormData(this);
+          var messageInput = document.getElementById("message");
+
+          fetch("{% url 'chat' %}", {
+            method: "POST",
+            body: formData,
+            headers: {
+              "X-Requested-With": "XMLHttpRequest",
+              "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]").value,
+            },
+          })
+            .then((response) => response.json())
+            .then((data) => {
+              addMessageToChat("user-message", formData.get("message")); // Adiciona a mensagem do usuário
+              addMessageToChat("bot-message", data.message); // Adiciona a resposta do bot
+              messageInput.value = ""; // Limpa o campo de entrada
+
+              // Verifica a mensagem do bot e exibe o botão de redirecionamento, se necessário
+              if (data.message === "Vamos lá retirar suas dúvidas?") {
+                document.getElementById("submitButton").style.display = "none"; // Esconde o botão de enviar
+                document.getElementById("redirectButton").style.display = "inline-block"; // Exibe o botão de redirecionamento
+              }
+            })
+            .catch((error) => console.error("Erro:", error));
+        });
+
+      // Função para adicionar uma mensagem ao histórico
+      function addMessageToChat(className, message) {
+        const messageDisplay = document.getElementById("messageDisplay");
+        const messageElement = document.createElement("div");
+        messageElement.className = "message " + className;
+        messageElement.innerText = message;
+        messageDisplay.appendChild(messageElement);
+        messageDisplay.scrollTop = messageDisplay.scrollHeight; // Rolagem automática para a última mensagem
+      }
+    </script>
+  </body>
+</html>
